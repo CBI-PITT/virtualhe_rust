@@ -3,6 +3,7 @@ use image::{ImageReader, DynamicImage, ImageBuffer};
 use ndarray::{Array2, Array3};
 use ndarray::parallel::prelude::*;
 use std::path::Path;
+use std::mem::drop;
 
 /// Command-line arguments for the utility.
 #[derive(Parser, Debug)]
@@ -19,7 +20,7 @@ struct Args {
     k: f32
 }
 
-/// Apply histogram scaling to the image so that 1 pixel per 100,000 saturates at max intensity.
+/// Apply in place histogram scaling to the mut image so that 1 pixel per 100,000 saturates at max intensity.
 fn apply_histogram_scaling(mut image: Array2<f32>, percentile: f32) -> Array2<f32> {
     let mut sorted: Vec<f32> = image.par_iter().copied().collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -59,17 +60,29 @@ fn generate_virtual_he(
         }
     });
 
+    // Release unused objects
+    drop(nucleus);
+    drop(eosin);
+
     // Normalize the RGB values to [0, 255] for uint8
     let rgb_uint8 = rgb.mapv(|v| (v * 255.0).min(255.0) as u8);
 
+    // Release unused objects
+    drop(rgb);
+
     // Save the RGB image
-    let mut output_image = ImageBuffer::new(rgb.shape()[1] as u32, rgb.shape()[0] as u32);
+    let mut output_image = ImageBuffer::new(rgb_uint8.shape()[1] as u32, rgb_uint8.shape()[0] as u32);
     for (x, y, pixel) in output_image.enumerate_pixels_mut() {
         let r = rgb_uint8[[y as usize, x as usize, 0]];
         let g = rgb_uint8[[y as usize, x as usize, 1]];
         let b = rgb_uint8[[y as usize, x as usize, 2]];
         *pixel = image::Rgb([r, g, b]);
     }
+
+    // Release unused objects
+    drop(rgb_uint8);
+
+    // Save Image
     output_image.save(output_path)?;
     Ok(())
 }
@@ -91,7 +104,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let eosin_image = eosin_image.decode()?;
 
     // Read images into ndarray
-    let nucleus = match nucleus_image {
+    println!("Reading {}", &args.nucleus);
+    let mut nucleus = match nucleus_image {
         DynamicImage::ImageLuma16(image) => Array2::<f32>::from_shape_vec(
             (image.height() as usize, image.width() as usize),
             image.pixels().map(|p| p[0] as f32 / 65535.0).collect(),
@@ -103,7 +117,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => panic!("Nucleus image must be grayscale!"),
     };
 
-    let eosin = match eosin_image {
+    println!("Reading {}", &args.eosin);
+    let mut eosin = match eosin_image {
         DynamicImage::ImageLuma16(image) => Array2::<f32>::from_shape_vec(
             (image.height() as usize, image.width() as usize),
             image.pixels().map(|p| p[0] as f32 / 65535.0).collect(),
@@ -116,11 +131,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Apply histogram scaling
-    let nucleus_scaled = apply_histogram_scaling(nucleus, 99.999);
-    let eosin_scaled = apply_histogram_scaling(eosin, 99.999);
+    println!{"Scaling channels"}
+    nucleus = apply_histogram_scaling(nucleus, 99.999);
+    eosin = apply_histogram_scaling(eosin, 99.999);
 
     // Generate virtual H&E image
-    generate_virtual_he(nucleus_scaled, eosin_scaled, Path::new(&args.output),args.k)?;
+    println!{"Calculating and Saving vH&E"}
+    generate_virtual_he(nucleus, eosin, Path::new(&args.output),args.k)?;
     println!("Virtual H&E image saved to: {}", args.output);
 
     Ok(())
