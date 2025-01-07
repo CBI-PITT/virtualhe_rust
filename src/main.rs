@@ -1,6 +1,7 @@
 use clap::Parser;
-use image::{ImageReader, DynamicImage,ImageBuffer};
+use image::{ImageReader, DynamicImage,ImageBuffer,Limits};
 use ndarray::{Array2, Array3};
+use ndarray::parallel::prelude::*;
 use std::path::Path;
 
 /// Command-line arguments for the utility.
@@ -70,10 +71,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments
     let args = Args::parse();
 
-    // Load nucleus and eosin images as grayscale float arrays
-    let nucleus_image = ImageReader::open(&args.nucleus)?.decode()?;
-    let eosin_image = ImageReader::open(&args.eosin)?.decode()?;
+    //let limits = Limits::no_limits();
 
+    // // Load nucleus and eosin images as grayscale float arrays
+    // let nucleus_image = ImageReader::open(&args.nucleus)?.decode()?;
+    // let eosin_image = ImageReader::open(&args.eosin)?.decode()?;
+
+    // Initialize image reader
+    let mut nucleus_image = ImageReader::open(&args.nucleus)?;
+    let mut eosin_image = ImageReader::open(&args.eosin)?;
+
+    // Remove file size and memory limits to enable processing of large images
+    nucleus_image.no_limits();
+    eosin_image.no_limits();
+
+    // Decode the image
+    let nucleus_image = nucleus_image.decode()?;
+    let eosin_image = eosin_image.decode()?;
+
+    // Read images
     let nucleus = match nucleus_image {
         DynamicImage::ImageLuma16(image) => {
             println!("Reading {}", &args.nucleus);
