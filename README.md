@@ -15,7 +15,7 @@ Giacomelli MG, Husvogt L, Vardeh H,  Faulkner-Jones BE, Hornegger J, Connolly JL
 
   A Python implementation can be found [here](https://github.com/CBI-PITT/virtualhe_py).
 
-This tool takes a 16bit greyscale image of nuclei (vHematoxylin) and a 16bit greyscale background image (vEosin) like autofluorescence or a fluorescent counterstain like eosin. The output in a 8bit RGB image saved to disk. Currently the bit depth is not flexible.
+This tool takes a 16bit or 8bit greyscale image of nuclei (vHematoxylin) and a 16bit or 8bit greyscale background image (vEosin) like autofluorescence or a fluorescent counterstain like eosin. The output in a 8bit RGB image saved to disk.
 
 ###### Usage example:
 

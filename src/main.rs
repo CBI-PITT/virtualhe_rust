@@ -82,6 +82,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 image.pixels().map(|p| p[0] as f32 / 65535.0).collect(),
             )?
         }
+        DynamicImage::ImageLuma8(image) => {
+            println!("Reading {}", &args.nucleus);
+            Array2::<f32>::from_shape_vec(
+                (image.height() as usize, image.width() as usize),
+                image.pixels().map(|p| p[0] as f32 / 255.0).collect(),
+            )?
+        }
         _ => panic!("Nucleus image must be grayscale!"),
     };
 
@@ -91,6 +98,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Array2::<f32>::from_shape_vec(
                 (image.height() as usize, image.width() as usize),
                 image.pixels().map(|p| p[0] as f32 / 65535.0).collect(),
+            )?
+        }
+        DynamicImage::ImageLuma8(image) => {
+            println!("Reading {}", &args.eosin);
+            Array2::<f32>::from_shape_vec(
+                (image.height() as usize, image.width() as usize),
+                image.pixels().map(|p| p[0] as f32 / 255.0).collect(),
             )?
         }
         _ => panic!("Eosin image must be grayscale!"),
